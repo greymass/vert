@@ -216,6 +216,8 @@ interface IndexKey<K> extends IndexPrimaryKey {
 class SecondaryKeyStore<K> {
   byPrimary: BTree<IndexPrimaryKey,IndexObject<K>>;
   bySecondary: BTree<IndexKey<K>,IndexObject<K>>;
+  // per-row RAM billed by nodeos, config::billable_size_v<index*_object>
+  billableSize: number = 0;
 
   constructor(private parent: TableStore, comparePrimary, compareSecondary) {
     this.byPrimary = new BTree<IndexPrimaryKey,IndexObject<K>>(undefined, comparePrimary);
@@ -323,6 +325,7 @@ class SecondaryKeyStore<K> {
 class Index64 extends SecondaryKeyStore<bigint> {
   constructor(store: TableStore) {
     super(store, IndexObject.compare, IndexObject.comparePrimitives);
+    this.billableSize = 128;
     this.secondary.lowest = 0n;
     this.secondary.highest = BigInt.asUintN(64, -1n);
   }
@@ -331,6 +334,7 @@ class Index64 extends SecondaryKeyStore<bigint> {
 class Index128 extends SecondaryKeyStore<bigint> {
   constructor(store: TableStore) {
     super(store, IndexObject.compare, IndexObject.comparePrimitives);
+    this.billableSize = 144;
     this.secondary.lowest = 0n;
     this.secondary.highest = BigInt.asUintN(128, -1n);
   }
@@ -339,6 +343,7 @@ class Index128 extends SecondaryKeyStore<bigint> {
 class Index256 extends SecondaryKeyStore<Buffer> {
   constructor(store: TableStore) {
     super(store, IndexObject.compare, IndexObject.compareBuffer);
+    this.billableSize = 160;
     this.secondary.lowest = Buffer.alloc(32, 0);
     this.secondary.highest = Buffer.alloc(32, 255);
   }
@@ -347,6 +352,7 @@ class Index256 extends SecondaryKeyStore<Buffer> {
 class IndexDouble extends SecondaryKeyStore<number> {
   constructor(store: TableStore) {
     super(store, IndexObject.compare, IndexObject.comparePrimitives);
+    this.billableSize = 128;
     this.secondary.lowest = 0;
     this.secondary.highest = Number.MAX_VALUE;
   }

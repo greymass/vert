@@ -1,0 +1,150 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.2",
+    "types": [],
+    "structs": [
+        {
+            "name": "erase",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "growshrink",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "grow_to",
+                    "type": "uint32"
+                },
+                {
+                    "name": "final_size",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "modify",
+            "base": "",
+            "fields": [
+                {
+                    "name": "payer",
+                    "type": "name"
+                },
+                {
+                    "name": "id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "size",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "notify",
+            "base": "",
+            "fields": [
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "payer",
+                    "type": "name"
+                },
+                {
+                    "name": "id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "size",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "row",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "sec",
+                    "type": "uint64"
+                },
+                {
+                    "name": "data",
+                    "type": "bytes"
+                }
+            ]
+        },
+        {
+            "name": "store",
+            "base": "",
+            "fields": [
+                {
+                    "name": "payer",
+                    "type": "name"
+                },
+                {
+                    "name": "id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "size",
+                    "type": "uint32"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "erase",
+            "type": "erase",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "growshrink",
+            "type": "growshrink",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "modify",
+            "type": "modify",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "notify",
+            "type": "notify",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "store",
+            "type": "store",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "rows",
+            "type": "row",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "ricardian_clauses": [],
+    "variants": [],
+    "action_results": []
+}

@@ -28,6 +28,18 @@ type f64 = number;
 const owner = nameToBigInt(Name.from('owner'));
 const active = nameToBigInt(Name.from('active'));
 
+// per-row RAM billed by nodeos, config::billable_size_v<key_value_object>
+const KV_BILLABLE_SIZE = 112;
+
+interface RamUsage {
+  delta: number;
+  last?: {
+    tab: Table;
+    primaryKey: bigint;
+    bytes: number;
+  };
+}
+
 function convertToUnsigned(...values: bigint[]) {
   return values.map(v => BigInt.asUintN(64, v));
 }
@@ -98,6 +110,7 @@ class VM extends Vert {
   private idx128 = new IteratorCache<IndexObject<bigint>>();
   private idx256 = new IteratorCache<IndexObject<Buffer>>();
   private idxDouble = new IteratorCache<IndexObject<number>>();
+  private ramDeltas = new Map<bigint, RamUsage>();
 
   // private idxLongDouble;
   private bc: Blockchain
@@ -598,6 +611,7 @@ class VM extends Vert {
           kv.payer = payer;
           kv.value = new Uint8Array(this.memory.buffer, data, len).slice();
           tab.set(id, kv);
+          this.updateRamUsage(payer, KV_BILLABLE_SIZE + len, tab, id);
           this.kvCache.cacheTable(tab);
           return this.kvCache.add(kv);
         },
@@ -609,6 +623,15 @@ class VM extends Vert {
           const kv = kvPrev.clone();
           const tab = this.kvCache.getTable(kv.tableId);
           assert(tab.code === this.context.receiver.toBigInt(), 'db access violation');
+          const newPayer = payer || kvPrev.payer;
+          const oldSize = KV_BILLABLE_SIZE + kvPrev.value.length;
+          const newSize = KV_BILLABLE_SIZE + len;
+          if (newPayer !== kvPrev.payer) {
+            this.updateRamUsage(kvPrev.payer, -oldSize, tab, kvPrev.primaryKey);
+            this.updateRamUsage(newPayer, newSize, tab, kvPrev.primaryKey);
+          } else if (oldSize !== newSize) {
+            this.updateRamUsage(newPayer, newSize - oldSize, tab, kvPrev.primaryKey);
+          }
           if (payer) {
             kv.payer = payer;
           }
@@ -621,6 +644,7 @@ class VM extends Vert {
           const kv = this.kvCache.get(iterator);
           const tab = this.kvCache.getTable(kv.tableId);
           assert(tab.code === this.context.receiver.toBigInt(), 'db access violation');
+          this.updateRamUsage(kv.payer, -(KV_BILLABLE_SIZE + kv.value.length), tab, kv.primaryKey);
           tab.delete(kv.primaryKey);
           this.kvCache.remove(iterator);
         },
@@ -1451,6 +1475,38 @@ class VM extends Vert {
     return tab;
   }
 
+  private updateRamUsage(payer: bigint, delta: number, tab: Table, primaryKey: bigint) {
+    const usage = this.ramDeltas.get(payer) || { delta: 0 };
+    usage.delta += delta;
+    if (delta > 0) {
+      usage.last = { tab, primaryKey, bytes: delta };
+    }
+    this.ramDeltas.set(payer, usage);
+  }
+
+  // RAM_RESTRICTIONS enforcement, mirrors nodeos apply_context::exec_one
+  private validateRamUsage() {
+    if (this.context.receiver.privileged) {
+      return;
+    }
+    const receiver = this.context.receiver.toBigInt();
+    for (const [account, usage] of this.ramDeltas) {
+      if (usage.delta <= 0 || account === receiver) {
+        continue;
+      }
+      const { tab, primaryKey, bytes } = usage.last;
+      const detail = ` (net +${usage.delta} bytes; last increase: +${bytes} bytes, ` +
+        `table ${bigIntToName(tab.table)}, scope ${bigIntToName(tab.scope)}, row ${primaryKey})`;
+      if (this.context.isNotification) {
+        throw new Error(`unprivileged contract cannot increase RAM usage of another account within a notify context: ${bigIntToName(account)}${detail}`);
+      }
+      const authorized = this.context.authorization.some(auth => nameToBigInt(auth.actor) === account);
+      if (!authorized) {
+        throw new Error(`unprivileged contract cannot increase RAM usage of another account that has not authorized the action: ${bigIntToName(account)}${detail}`);
+      }
+    }
+  }
+
   private genericIndex = {
     store: <K,>(
       index: SecondaryKeyStore<K>,
@@ -1466,6 +1522,7 @@ class VM extends Vert {
         payer,
       });
       index.set(undefined, obj);
+      this.updateRamUsage(payer, index.billableSize, tab, id);
       cache.cacheTable(tab);
       return cache.add(obj);
     },
@@ -1479,6 +1536,10 @@ class VM extends Vert {
       assert(tab.code === this.context.receiver.toBigInt(), 'db access violation');
       if (payer === 0n) {
         payer = obj.payer;
+      }
+      if (payer !== obj.payer) {
+        this.updateRamUsage(obj.payer, -index.billableSize, tab, obj.primaryKey);
+        this.updateRamUsage(payer, index.billableSize, tab, obj.primaryKey);
       }
       const newObj = obj.clone();
       newObj.secondaryKey = conv.from(secondary);
@@ -1494,6 +1555,7 @@ class VM extends Vert {
       const obj = cache.get(iterator);
       const tab = cache.getTable(obj.tableId);
       assert(tab.code === this.context.receiver.toBigInt(), 'db access violation');
+      this.updateRamUsage(obj.payer, -index.billableSize, tab, obj.primaryKey);
       index.delete(obj);
       cache.remove(iterator);
     },
@@ -1638,7 +1700,8 @@ class VM extends Vert {
 
   apply(context: VM.Context) {
     this.context = context;
-    
+    this.ramDeltas = new Map();
+
     // Check authorization
     for (const auth of this.context.authorization) {
       // Check actor exists
@@ -1674,6 +1737,7 @@ class VM extends Vert {
         this.context.firstReceiver.toBigInt(),
         nameToBigInt(this.context.action)
       );
+      this.validateRamUsage();
     } catch (e) {
       throw e
     } finally {
