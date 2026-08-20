@@ -6,6 +6,12 @@ import { Blockchain } from "./blockchain";
 import { generatePermissions, addInlinePermission } from "./utils";
 import BN from "bn.js";
 
+export type ResourceLimits = {
+  ramBytes: bigint;
+  netWeight: bigint;
+  cpuWeight: bigint;
+}
+
 export type AccountArgs = Omit<Partial<Account>, 'name'|'abi'|'wasm'> & {
   name: NameType,
   abi?: ABIDef | Promise<ABIDef>;
@@ -35,6 +41,8 @@ export class Account {
 
   // Privileged accounts aren't constrained by the normal permission checks
   public privileged: boolean = false;
+  // Mirrors nodeos resource_limits_object, which initializes every account unlimited
+  public resourceLimits: ResourceLimits = { ramBytes: -1n, netWeight: -1n, cpuWeight: -1n };
   public permissions: API.v1.AccountPermission[] = [];
   public wasm?: Uint8Array;
   public codeSequence: number = 0;

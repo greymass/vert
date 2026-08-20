@@ -8,6 +8,7 @@ import { sha256, sha512, sha1, ripemd160 } from "hash.js";
 import { sha3_256, keccak256 } from "js-sha3"
 import { bigIntToName, nameToBigInt, nameTypeToBigInt } from "./bn";
 import { Blockchain } from "./blockchain";
+import { blockchainParametersSize } from "./parameters";
 import { Account } from "./account";
 import { antelopeAssert, antelopeAssertMessage, antelopeAssertCode } from "./errors";
 import { isAuthoritySatisfied } from "./utils";
@@ -284,10 +285,13 @@ class VM extends Vert {
           log.debug(`-> Authority: ${decodedAction.authorization}`);
           log.debug(`-> Inline Action Size: ${decodedAction.data.array.length}`);
   
-          // Check contract exists
+          // Nodeos only requires the account to exist; codeless targets are traced and dropped
           const contract = this.bc.getAccount(decodedAction.account)
-          if (!contract || !contract.isContract) {
-            throw new Error(`Contract ${decodedAction.account} is missing for inline action`)
+          if (!contract) {
+            throw new Error(`Account ${decodedAction.account} is missing for inline action`)
+          }
+          if (!contract.isContract) {
+            return
           }
 
           if (contract.actions[decodedAction.name.toString()]) {
@@ -1121,11 +1125,63 @@ class VM extends Vert {
           this.bc.console += str;
         },
   
-        // TODO: privileged APIs
+        // privileged APIs
+        is_privileged: (account: bigint): boolean => {
+          log.debug('is_privileged');
+          return this.getPrivilegedAccount(account, 'is_privileged').privileged;
+        },
+        set_privileged: (account: bigint, is_priv: boolean): void => {
+          log.debug('set_privileged');
+          this.getPrivilegedAccount(account, 'set_privileged').privileged = !!is_priv;
+        },
+        get_resource_limits: (account: bigint, ram_bytes: ptr, net_weight: ptr, cpu_weight: ptr): void => {
+          log.debug('get_resource_limits');
+          const limits = this.getPrivilegedAccount(account, 'get_resource_limits').resourceLimits;
+          this.memory.writeUInt64(ram_bytes, BigInt.asUintN(64, limits.ramBytes));
+          this.memory.writeUInt64(net_weight, BigInt.asUintN(64, limits.netWeight));
+          this.memory.writeUInt64(cpu_weight, BigInt.asUintN(64, limits.cpuWeight));
+        },
+        set_resource_limits: (account: bigint, ram_bytes: bigint, net_weight: bigint, cpu_weight: bigint): void => {
+          log.debug('set_resource_limits');
+          const target = this.getPrivilegedAccount(account, 'set_resource_limits');
+          assert(ram_bytes >= -1n, 'invalid value for ram resource limit expected [-1,INT64_MAX]');
+          assert(net_weight >= -1n, 'invalid value for net resource weight expected [-1,INT64_MAX]');
+          assert(cpu_weight >= -1n, 'invalid value for cpu resource weight expected [-1,INT64_MAX]');
+          target.resourceLimits = {
+            ramBytes: BigInt.asIntN(64, ram_bytes),
+            netWeight: BigInt.asIntN(64, net_weight),
+            cpuWeight: BigInt.asIntN(64, cpu_weight),
+          };
+        },
         set_proposed_producers: (data: ptr, size: number): bigint => { return 0n; },
-        set_blockchain_parameters_packed: (data: ptr, len: number): void => {},
-        get_blockchain_parameters_packed: (data: ptr, len: number): number => { return 0; },
-  
+        set_proposed_producers_ex: (format: bigint, data: ptr, size: number): bigint => { return 0n; },
+        set_blockchain_parameters_packed: (data: ptr, len: number): void => {
+          log.debug('set_blockchain_parameters_packed');
+          assert(this.context.receiver.privileged, `set_blockchain_parameters_packed not allowed in unprivileged contract ${this.context.receiver.name}`);
+          assert(len === blockchainParametersSize, `invalid packed blockchain parameters size ${len}`);
+          const updated = Buffer.alloc(len);
+          updated.set(Buffer.from_(this.memory.buffer, data, len));
+          this.bc.blockchainParameters = updated;
+        },
+        get_blockchain_parameters_packed: (data: ptr, len: number): number => {
+          log.debug('get_blockchain_parameters_packed');
+          const params = this.bc.blockchainParameters;
+          if (len >= params.length) {
+            Buffer.from_(this.memory.buffer, data, params.length).set(params);
+          }
+          return params.length;
+        },
+        set_parameters_packed: (data: ptr, len: number): void => {},
+        set_wasm_parameters_packed: (data: ptr, len: number): void => {},
+        set_finalizers: (data: ptr, len: number): void => {},
+        preactivate_feature: (digest: ptr): void => {},
+
+        // TODO: BLS APIs
+        bls_g2_add: (op1: ptr, op1_len: i32, op2: ptr, op2_len: i32, result: ptr, result_len: i32): i32 => { return -1; },
+        bls_g2_map: (e: ptr, e_len: i32, result: ptr, result_len: i32): i32 => { return -1; },
+        bls_pairing: (g1: ptr, g1_len: i32, g2: ptr, g2_len: i32, result: ptr, result_len: i32): i32 => { return -1; },
+        bls_fp_mod: (s: ptr, s_len: i32, result: ptr, result_len: i32): i32 => { return -1; },
+
         // TODO: security_group APIs
   
         // system
@@ -1473,6 +1529,13 @@ class VM extends Vert {
       tab = this.bc.store.createTable(nameTypeToBigInt(code), nameTypeToBigInt(scope), nameTypeToBigInt(table), nameTypeToBigInt(payer));
     }
     return tab;
+  }
+
+  private getPrivilegedAccount(account: bigint, intrinsic: string): Account {
+    assert(this.context.receiver.privileged, `${intrinsic} not allowed in unprivileged contract ${this.context.receiver.name}`);
+    const target = this.bc.getAccount(bigIntToName(account));
+    assert(!!target, `unknown account ${bigIntToName(account)}`);
+    return target;
   }
 
   private updateRamUsage(payer: bigint, delta: number, tab: Table, primaryKey: bigint) {

@@ -12,6 +12,7 @@ import { bigIntToName } from "./bn";
 import { findStartAndEnd } from '../utils/color'
 import colors from 'colors'
 import { ACTIVATED_PROTOCOL_FEATURES } from "../utils/activatedFeatures";
+import { defaultBlockchainParameters } from "./parameters";
 import Buffer from '../buffer'
 
 export class Blockchain {
@@ -23,6 +24,7 @@ export class Blockchain {
   actionTraces: VM.Context[] = []
   executionTraces: ExecutionTrace[] = []
   protocolFeatures: string[] = ACTIVATED_PROTOCOL_FEATURES
+  blockchainParameters: Buffer = defaultBlockchainParameters()
 
   // Storage
   isStorageDeltasEnabled: boolean = false
