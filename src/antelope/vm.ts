@@ -1533,8 +1533,8 @@ class VM extends Vert {
 
   private getPrivilegedAccount(account: bigint, intrinsic: string): Account {
     assert(this.context.receiver.privileged, `${intrinsic} not allowed in unprivileged contract ${this.context.receiver.name}`);
-    const target = this.bc.getAccount(bigIntToName(account));
-    assert(!!target, `unknown account ${bigIntToName(account)}`);
+    const target = this.bc.getAccount(bigIntToName(BigInt.asUintN(64, account)));
+    assert(!!target, `unknown account ${bigIntToName(BigInt.asUintN(64, account))}`);
     return target;
   }
 
