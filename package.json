@@ -1,22 +1,39 @@
 {
-  "name": "@vaulta/vert",
-  "version": "2.1.1",
-  "homepage": "https://github.com/eosnetworkfoundation/vert",
-  "description": "Testing library for Vaulta smart contracts",
+  "name": "@greymass/vert",
+  "version": "3.0.0",
+  "homepage": "https://github.com/greymass/vert",
+  "description": "Testing library for Antelope smart contracts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/greymass/vert.git"
+  },
+  "bugs": {
+    "url": "https://github.com/greymass/vert/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist",
     "src"
   ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "rm -rf dist && tsc",
     "build-web": "webpack",
     "start": "node dist/index",
     "test": "mocha src/**/*.spec.ts -r ts-node/register && yarn --cwd examples",
-    "prepublish": "npm run test && npm run build"
+    "prepublishOnly": "npm run test && npm run build"
   },
   "author": "Jeeyong Um <conr2d@gmail.com>",
+  "contributors": [
+    "Vaulta Foundation",
+    "Greymass, Inc. <support@greymass.com>"
+  ],
   "license": "MIT",
   "devDependencies": {
     "@types/chai": "^4.3.11",

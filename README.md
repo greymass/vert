@@ -14,18 +14,18 @@ The focus of VeRT is on the better compatibility than the performance, so it can
 ## Requirement
 
 - WebAssembly binary with exported memory
-- Nodejs v16 or higher (JavaScript runtime with WebAssembly BigInt support)
+- Nodejs v18 or higher (JavaScript runtime with WebAssembly BigInt support)
 
 ## Installation
 
 ```shell
-npm install @vaulta/vert
+npm install @greymass/vert
 ```
 
 ## Example usage
 
 ```typescript
-import { Blockchain, nameToBigInt, expectToThrow } from "@vaulta/vert";
+import { Blockchain, nameToBigInt, expectToThrow } from "@greymass/vert";
 import { assert } from "chai";
 
 // instantiate the blockchain emulator
@@ -86,9 +86,23 @@ describe('Testing Suite', () => {
 
 
 
+## RAM restrictions
+
+VeRT bills RAM for every row a contract writes and enforces the RAM_RESTRICTIONS rules that nodeos applies in `apply_context::exec_one`. Each row costs the size of its serialized data plus a fixed per-row overhead, and each secondary index costs a fixed amount per entry, matching the `billable_size_v` constants in nodeos. Deltas are tracked per payer and evaluated when the action returns, so each action, inline action, and notification is judged on its own.
+
+An unprivileged contract that ends an action having increased another account's RAM usage throws, with two exceptions: the account authorized the action, or the contract is the account being billed. Inside a notification context, increasing another account's RAM always throws, because a notified contract has no authorization to spend on someone else's behalf. Privileged accounts skip the check entirely.
+
+A test suite that passed on earlier versions of VeRT can fail here, and that failure is usually a real defect: the contract is billing RAM to an account that did not agree to pay for it, which nodeos would reject on chain. The error message names the account, the net byte increase, and the table, scope, and primary key of the row that last increased it. Fix the contract by billing the row to an account that authorized the action, most often the action's own signer.
+
 ## Test
 
 ```shell
 npm run test
 ```
+
+## Lineage
+
+VeRT was written by Jeeyong "conr2d" Um and published as `vert` in 2021, then maintained by the EOS Network Foundation as `@eosnetwork/vert` and by the Vaulta Foundation as `@vaulta/vert`. Upstream development stopped after version 2.1.1 in August 2025 and the project has no maintainer.
+
+Greymass continues the project as `@greymass/vert`, starting at version 3.0.0 to carry the upstream version history forward. The license remains MIT and the original copyright notices are intact. Releases before 3.0.0 live in the [upstream repository](https://github.com/VaultaFoundation/vert).
 
