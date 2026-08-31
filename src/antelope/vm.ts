@@ -1375,13 +1375,10 @@ class VM extends Vert {
           let lhs: i128 = BigInt(ha)
           let rhs: i128 = BigInt(hb)
 
-          lhs = BigInt.asUintN(128, lhs << BigInt(64));
-          lhs = BigInt.asUintN(128, lhs | la);
-         
-          rhs = BigInt.asUintN(128, rhs << BigInt(64));
-          rhs = BigInt.asUintN(128, rhs | lb);
-         
-          lhs = BigInt.asUintN(128, lhs / rhs);
+          lhs = BigInt.asIntN(128, (lhs << BigInt(64)) | la);
+          rhs = BigInt.asIntN(128, (rhs << BigInt(64)) | lb);
+
+          lhs = BigInt.asIntN(128, lhs / rhs);
 
           const retBuffer = Buffer.from_(this.memory.buffer, ret, 16)
           SecondaryKeyConverter.int128.to(retBuffer, lhs)
@@ -1426,13 +1423,10 @@ class VM extends Vert {
           let lhs: i128 = BigInt(ha)
           let rhs: i128 = BigInt(hb)
 
-          lhs = BigInt.asUintN(128, lhs << BigInt(64));
-          lhs = BigInt.asUintN(128, lhs | la);
-         
-          rhs = BigInt.asUintN(128, rhs << BigInt(64));
-          rhs = BigInt.asUintN(128, rhs | lb);
-         
-          lhs = BigInt.asUintN(128, lhs % rhs);
+          lhs = BigInt.asIntN(128, (lhs << BigInt(64)) | la);
+          rhs = BigInt.asIntN(128, (rhs << BigInt(64)) | lb);
+
+          lhs = BigInt.asIntN(128, lhs % rhs);
 
           const retBuffer = Buffer.from_(this.memory.buffer, ret, 16)
           SecondaryKeyConverter.int128.to(retBuffer, lhs)

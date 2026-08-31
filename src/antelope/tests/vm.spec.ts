@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { Name } from "@wharfkit/antelope";
-import { VM } from "../vm";
+import { SecondaryKeyConverter, VM } from "../vm";
 import { Memory } from "../../memory";
 import Buffer from "../../buffer";
 import { nameToBigInt } from "../bn";
@@ -183,6 +183,24 @@ describe('eos-vm imports', () => {
   });
 
   describe('builtins', () => {
+    it('__divti3 divides signed operands with truncation toward zero', () => {
+      const retBuffer = Buffer.from_(memory.buffer, 0, 16);
+      vm.imports.env.__divti3(0, BigInt.asUintN(64, -5000000000000n), -1n, 31536000n, 0n);
+      expect(SecondaryKeyConverter.int128.from(retBuffer)).to.equal(-5000000000000n / 31536000n);
+    });
+
+    it('__modti3 keeps the sign of the dividend', () => {
+      const retBuffer = Buffer.from_(memory.buffer, 0, 16);
+      vm.imports.env.__modti3(0, BigInt.asUintN(64, -5000000000000n), -1n, 31536000n, 0n);
+      expect(SecondaryKeyConverter.int128.from(retBuffer)).to.equal(-5000000000000n % 31536000n);
+    });
+
+    it('__multi3 multiplies negative by positive', () => {
+      const retBuffer = Buffer.from_(memory.buffer, 0, 16);
+      vm.imports.env.__multi3(0, BigInt.asUintN(64, -5000000000000n), -1n, 2592000n, 0n);
+      expect(SecondaryKeyConverter.int128.from(retBuffer)).to.equal(-5000000000000n * 2592000n);
+    });
+
     it('memcpy', () => {
       const buffer = Buffer.from_(memory.buffer, 0, 6);
       buffer.set([1, 2, 3, 4, 5, 6]);
