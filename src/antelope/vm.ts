@@ -1378,6 +1378,10 @@ class VM extends Vert {
           lhs = BigInt.asIntN(128, (lhs << BigInt(64)) | la);
           rhs = BigInt.asIntN(128, (rhs << BigInt(64)) | lb);
 
+          if (rhs === BigInt(0)) {
+            throw new Error('divide by zero');
+          }
+
           lhs = BigInt.asIntN(128, lhs / rhs);
 
           const retBuffer = Buffer.from_(this.memory.buffer, ret, 16)
@@ -1395,6 +1399,10 @@ class VM extends Vert {
           rhs = BigInt.asUintN(128, rhs << BigInt(64));
           rhs = BigInt.asUintN(128, rhs | lb);
          
+          if (rhs === BigInt(0)) {
+            throw new Error('divide by zero');
+          }
+
           lhs = BigInt.asUintN(128, lhs / rhs);
 
           const retBuffer = Buffer.from_(this.memory.buffer, ret, 16)
@@ -1426,6 +1434,10 @@ class VM extends Vert {
           lhs = BigInt.asIntN(128, (lhs << BigInt(64)) | la);
           rhs = BigInt.asIntN(128, (rhs << BigInt(64)) | lb);
 
+          if (rhs === BigInt(0)) {
+            throw new Error('divide by zero');
+          }
+
           lhs = BigInt.asIntN(128, lhs % rhs);
 
           const retBuffer = Buffer.from_(this.memory.buffer, ret, 16)
@@ -1443,6 +1455,10 @@ class VM extends Vert {
           rhs = BigInt.asUintN(128, rhs << BigInt(64));
           rhs = BigInt.asUintN(128, rhs | lb);
          
+          if (rhs === BigInt(0)) {
+            throw new Error('divide by zero');
+          }
+
           lhs = BigInt.asUintN(128, lhs % rhs);
 
           const retBuffer = Buffer.from_(this.memory.buffer, ret, 16)

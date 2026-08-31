@@ -195,6 +195,22 @@ describe('eos-vm imports', () => {
       expect(SecondaryKeyConverter.int128.from(retBuffer)).to.equal(-5000000000000n % 31536000n);
     });
 
+    it('__divti3 asserts on divide by zero', () => {
+      expect(() => vm.imports.env.__divti3(0, 1n, 0n, 0n, 0n)).to.throw('divide by zero');
+    });
+
+    it('__udivti3 asserts on divide by zero', () => {
+      expect(() => vm.imports.env.__udivti3(0, 1n, 0n, 0n, 0n)).to.throw('divide by zero');
+    });
+
+    it('__modti3 asserts on divide by zero', () => {
+      expect(() => vm.imports.env.__modti3(0, 1n, 0n, 0n, 0n)).to.throw('divide by zero');
+    });
+
+    it('__umodti3 asserts on divide by zero', () => {
+      expect(() => vm.imports.env.__umodti3(0, 1n, 0n, 0n, 0n)).to.throw('divide by zero');
+    });
+
     it('__multi3 multiplies negative by positive', () => {
       const retBuffer = Buffer.from_(memory.buffer, 0, 16);
       vm.imports.env.__multi3(0, BigInt.asUintN(64, -5000000000000n), -1n, 2592000n, 0n);
