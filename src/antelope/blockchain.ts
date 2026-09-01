@@ -92,12 +92,19 @@ export class Blockchain {
         // Execute context
         context.receiver.vm.apply(context)
 
-        // Add to local queues
+        // Mirrors apply_context::exec: one shared inline queue per action, spliced ahead of siblings after notifications drain
+        const owner = context.isNotification ? context.owningAction : context
+        for (const notification of context.notificationsQueue) {
+          notification.owningAction = owner
+        }
         notificationsQueue = notificationsQueue.concat(context.notificationsQueue)
         if (context.isNotification) {
-          actionsQueue = actionsQueue.concat(context.actionsQueue)
-        } else {
-          actionsQueue = context.actionsQueue.concat(actionsQueue)
+          owner.actionsQueue = owner.actionsQueue.concat(context.actionsQueue)
+          context.actionsQueue = []
+        }
+        if (!notificationsQueue.length) {
+          actionsQueue = owner.actionsQueue.concat(actionsQueue)
+          owner.actionsQueue = []
         }
       }
     }

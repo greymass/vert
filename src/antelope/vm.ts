@@ -1842,6 +1842,7 @@ namespace VM {
     authorization: PermissionLevel[] = [];
     actionsQueue: VM.Context[] = [];
     notificationsQueue: VM.Context[] = [];
+    owningAction: VM.Context;
     transaction: Transaction;
     decodedData: Action
 
