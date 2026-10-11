@@ -31,6 +31,8 @@ const active = nameToBigInt(Name.from('active'));
 
 // per-row RAM billed by nodeos, config::billable_size_v<key_value_object>
 const KV_BILLABLE_SIZE = 112;
+// config::billable_size_v<table_id_object>
+const TABLE_BILLABLE_SIZE = 108;
 
 interface RamUsage {
   delta: number;
@@ -601,8 +603,8 @@ class VM extends Vert {
           const [scope, table, payer, id] = convertToUnsigned(_scope, _table, _payer, _id);
           log.debug(`db_store_i64: Scope ${bigIntToName(scope)} | Table ${bigIntToName(table)} | ID ${id}`);
   
-          const tab = this.findOrCreateTable(this.context.receiver.name, bigIntToName(scope), bigIntToName(table), bigIntToName(payer));
           assert(payer !== 0n, 'must specify a valid account to pay for new record');
+          const tab = this.findOrCreateTable(scope, table, payer, id);
           assert(!tab.has(id), 'key uniqueness violation');
           const kv = new KeyValueObject({
             tableId: tab.id,
@@ -650,6 +652,7 @@ class VM extends Vert {
           assert(tab.code === this.context.receiver.toBigInt(), 'db access violation');
           this.updateRamUsage(kv.payer, -(KV_BILLABLE_SIZE + kv.value.length), tab, kv.primaryKey);
           tab.delete(kv.primaryKey);
+          this.removeTableIfEmpty(tab, kv.primaryKey);
           this.kvCache.remove(iterator);
         },
         db_get_i64: (iterator: i32, data: ptr, len: i32): i32 => {
@@ -1533,12 +1536,25 @@ class VM extends Vert {
     return this.bc.store.findTable(nameTypeToBigInt(code), nameTypeToBigInt(scope), nameTypeToBigInt(table));
   }
 
-  private findOrCreateTable(code: NameType, scope: NameType, table: NameType, payer: NameType): Table {
-    let tab = this.bc.store.findTable(nameTypeToBigInt(code), nameTypeToBigInt(scope), nameTypeToBigInt(table));
+  private findOrCreateTable(scope: bigint, table: bigint, payer: bigint, primaryKey: bigint): Table {
+    const code = this.context.receiver.toBigInt();
+    let tab = this.bc.store.findTable(code, scope, table);
     if (!tab) {
-      tab = this.bc.store.createTable(nameTypeToBigInt(code), nameTypeToBigInt(scope), nameTypeToBigInt(table), nameTypeToBigInt(payer));
+      tab = this.bc.store.createTable(code, scope, table, payer);
+    } else if (tab.count > 0) {
+      return tab;
+    } else {
+      tab.setPayer(payer);
     }
+    this.updateRamUsage(payer, TABLE_BILLABLE_SIZE, tab, primaryKey);
     return tab;
+  }
+
+  private removeTableIfEmpty(tab: Table, primaryKey: bigint) {
+    if (tab.count === 0) {
+      this.updateRamUsage(tab.payer, -TABLE_BILLABLE_SIZE, tab, primaryKey);
+      this.bc.store.deletePrefix(tab.prefix());
+    }
   }
 
   private getPrivilegedAccount(account: bigint, intrinsic: string): Account {
@@ -1587,7 +1603,7 @@ class VM extends Vert {
       scope: bigint, table: bigint, payer: bigint, id: bigint, secondary: Buffer, conv
     ) => {
       assert(payer !== 0n, 'must specify a valid account to pay for new record');
-      const tab = this.findOrCreateTable(this.context.receiver.name, bigIntToName(scope), bigIntToName(table), bigIntToName(payer));
+      const tab = this.findOrCreateTable(scope, table, payer, id);
       const obj = new IndexObject<K>({
         tableId: tab.id,
         primaryKey: id,
@@ -1630,6 +1646,7 @@ class VM extends Vert {
       assert(tab.code === this.context.receiver.toBigInt(), 'db access violation');
       this.updateRamUsage(obj.payer, -index.billableSize, tab, obj.primaryKey);
       index.delete(obj);
+      this.removeTableIfEmpty(tab, obj.primaryKey);
       cache.remove(iterator);
     },
     find_secondary: <K,>(

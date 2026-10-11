@@ -14,6 +14,20 @@
             ]
         },
         {
+            "name": "erasein",
+            "base": "",
+            "fields": [
+                {
+                    "name": "scope",
+                    "type": "name"
+                },
+                {
+                    "name": "id",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
             "name": "growshrink",
             "base": "",
             "fields": [
@@ -50,6 +64,28 @@
             ]
         },
         {
+            "name": "move",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "payer",
+                    "type": "name"
+                },
+                {
+                    "name": "id",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
             "name": "notify",
             "base": "",
             "fields": [
@@ -68,6 +104,28 @@
                 {
                     "name": "size",
                     "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "pair",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "one",
+                    "type": "uint64"
+                },
+                {
+                    "name": "two",
+                    "type": "uint64"
+                },
+                {
+                    "name": "data",
+                    "type": "bytes"
                 }
             ]
         },
@@ -106,12 +164,61 @@
                     "type": "uint32"
                 }
             ]
+        },
+        {
+            "name": "storein",
+            "base": "",
+            "fields": [
+                {
+                    "name": "scope",
+                    "type": "name"
+                },
+                {
+                    "name": "payer",
+                    "type": "name"
+                },
+                {
+                    "name": "id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "size",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "storepair",
+            "base": "",
+            "fields": [
+                {
+                    "name": "scope",
+                    "type": "name"
+                },
+                {
+                    "name": "payer",
+                    "type": "name"
+                },
+                {
+                    "name": "id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "size",
+                    "type": "uint32"
+                }
+            ]
         }
     ],
     "actions": [
         {
             "name": "erase",
             "type": "erase",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "erasein",
+            "type": "erasein",
             "ricardian_contract": ""
         },
         {
@@ -125,6 +232,11 @@
             "ricardian_contract": ""
         },
         {
+            "name": "move",
+            "type": "move",
+            "ricardian_contract": ""
+        },
+        {
             "name": "notify",
             "type": "notify",
             "ricardian_contract": ""
@@ -133,9 +245,26 @@
             "name": "store",
             "type": "store",
             "ricardian_contract": ""
+        },
+        {
+            "name": "storein",
+            "type": "storein",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "storepair",
+            "type": "storepair",
+            "ricardian_contract": ""
         }
     ],
     "tables": [
+        {
+            "name": "pairs",
+            "type": "pair",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
         {
             "name": "rows",
             "type": "row",

@@ -35,10 +35,11 @@ class Table extends PrefixedStore<bigint,KeyValueObject> {
   private _code: bigint;
   private _scope: bigint;
   private _table: bigint;
-  private payer: bigint;
+  private _payer: bigint;
   private _prefix?: Buffer;
   private seq = 0;
   private _size = 0;
+  secondaryCount = 0;
 
   static serializePrefix(code: bigint, scope: bigint, table: bigint): Buffer {
     let buf = Buffer.alloc(24);
@@ -59,7 +60,7 @@ class Table extends PrefixedStore<bigint,KeyValueObject> {
     this._code = options.code;
     this._scope = options.scope;
     this._table = options.table;
-    this.payer = options.payer;
+    this._payer = options.payer;
     this._prefix = options.prefix;
   }
 
@@ -77,6 +78,20 @@ class Table extends PrefixedStore<bigint,KeyValueObject> {
 
   get size(): number {
     return this._size;
+  }
+
+  get payer(): bigint {
+    return this._payer;
+  }
+
+  // table_id_object::count in nodeos: primary rows plus secondary index rows
+  get count(): number {
+    return this._size + this.secondaryCount;
+  }
+
+  setPayer(payer: bigint) {
+    (this.store as TableStore).pushChanges(new TablePayerChange({ table: this, payer: this._payer }));
+    this._payer = payer;
   }
 
   prefix(): Buffer {
@@ -114,9 +129,6 @@ class Table extends PrefixedStore<bigint,KeyValueObject> {
   delete(key: bigint) {
     super.delete(key);
     this._size--;
-    if (this._size === 0) {
-      this.store.deletePrefix(this.prefix());
-    }
   }
 
   has(key: bigint) {
@@ -130,6 +142,18 @@ class Table extends PrefixedStore<bigint,KeyValueObject> {
     } else if (change instanceof DeleteItemChange) {
       this._size++;
     }
+  }
+}
+
+class TablePayerChange implements StoreChange {
+  table: Table;
+  payer: bigint;
+  constructor(init?: Partial<TablePayerChange>) {
+    Object.assign(this, init);
+  }
+  revert(store) {
+    log.debug('revert table payer');
+    (this.table as any)._payer = this.payer;
   }
 }
 
@@ -235,8 +259,11 @@ class SecondaryKeyStore<K> {
           key: this.bySecondary.get(key), newKey: newKey, keystore: this }));
       }
       this.bySecondary.delete(key);
-    } else if (!isReverting) {
-      this.parent.pushChanges(new CreateSecondaryKeyChange({ key: newKey, keystore: this }));
+    } else {
+      if (!isReverting) {
+        this.parent.pushChanges(new CreateSecondaryKeyChange({ key: newKey, keystore: this }));
+      }
+      this.adjustCount(newKey.tableId, 1);
     }
     this.bySecondary.set(newKey, newKey);
     this.byPrimary.set(newKey, newKey);
@@ -246,8 +273,17 @@ class SecondaryKeyStore<K> {
     if (!isReverting) {
       this.parent.pushChanges(new DeleteSecondaryKeyChange({ key: this.byPrimary.get(key), keystore: this }));
     }
+    const tableId = this.byPrimary.get(key)?.tableId;
     this.bySecondary.delete(key);
     this.byPrimary.delete(key);
+    this.adjustCount(tableId, -1);
+  }
+
+  private adjustCount(tableId: number | undefined, delta: number) {
+    const tab = tableId === undefined ? undefined : this.parent.getTableById(tableId);
+    if (tab) {
+      tab.secondaryCount += delta;
+    }
   }
 
   next(key: IndexPrimaryKey) {

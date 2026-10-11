@@ -20,7 +20,7 @@ abstract class PrefixedStore<K,V> {
     return this.store.get(this.key(key));
   }
   delete(key: K) {
-    this.store.delete(this.key(key));
+    this.store.delete(this.key(key), this);
   }
   revert(change: StoreChange) {}
   prev(key: K): V | undefined {
@@ -149,12 +149,12 @@ class Store<K,V> {
     return this.store.has(key);
   }
 
-  delete(key: K) {
+  delete(key: K, prefixedStorage?: any) {
     let value = this.store.get(key);
     if (!value) {
       throw new Error('try deleting non-existent item');
     }
-    this.changes.push(new DeleteItemChange({ key, value }));
+    this.changes.push(new DeleteItemChange({ key, value, prefixedStorage }));
     this.store.delete(key);
   }
 
@@ -262,6 +262,7 @@ class UpdateItemChange implements StoreChange {
 class DeleteItemChange implements StoreChange {
   key: any;
   value: any;
+  prefixedStorage?: any;
   constructor(init?: Partial<DeleteItemChange>) {
     Object.assign(this, init);
   }
@@ -271,6 +272,9 @@ class DeleteItemChange implements StoreChange {
       throw new Error('revert stack is corrupted');
     }
     store.internal.set(this.key, this.value);
+    if (this.prefixedStorage) {
+      this.prefixedStorage.revert(this);
+    }
   }
 }
 
