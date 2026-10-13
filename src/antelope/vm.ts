@@ -32,7 +32,7 @@ const active = nameToBigInt(Name.from('active'));
 // per-row RAM billed by nodeos, config::billable_size_v<key_value_object>
 const KV_BILLABLE_SIZE = 112;
 // config::billable_size_v<table_id_object>
-const TABLE_BILLABLE_SIZE = 108;
+const TABLE_BILLABLE_SIZE = 112;
 
 interface RamUsage {
   delta: number;

@@ -94,7 +94,7 @@ describe('ram restrictions', () => {
         it('rejects billing any non-receiver account within a notify context', async () => {
             await expectToThrow(
                 ramtest.actions.notify(['ramnotified', 'alice', 6, 8]).send('alice@active'),
-                'unprivileged contract cannot increase RAM usage of another account within a notify context: alice (net +373 bytes; last increase: +128 bytes, table rows, scope ramnotified, row 6)'
+                'unprivileged contract cannot increase RAM usage of another account within a notify context: alice (net +377 bytes; last increase: +128 bytes, table rows, scope ramnotified, row 6)'
             );
         });
         it('allows billing the notified receiver within a notify context', async () => {
@@ -115,7 +115,7 @@ describe('ram restrictions', () => {
         it('rejects a first row in an empty scope billed to a non-authorizer', async () => {
             await expectToThrow(
                 ramtest.actions.move(['keep', 'fresh', 'alice', 10]).send('bob@active'),
-                'unprivileged contract cannot increase RAM usage of another account that has not authorized the action: alice (net +108 bytes; last increase: +128 bytes, table rows, scope fresh, row 10)'
+                'unprivileged contract cannot increase RAM usage of another account that has not authorized the action: alice (net +112 bytes; last increase: +128 bytes, table rows, scope fresh, row 10)'
             );
             expect(findTable('fresh')).to.be.undefined;
             expect(findTable('keep').count).to.equal(4);
@@ -136,19 +136,19 @@ describe('ram restrictions', () => {
             );
             await expectToThrow(
                 ramtest.actions.move(['shared', 'other', 'alice', 10]).send('bob@active'),
-                'unprivileged contract cannot increase RAM usage of another account that has not authorized the action: alice (net +108 bytes; last increase: +128 bytes, table rows, scope other, row 10)'
+                'unprivileged contract cannot increase RAM usage of another account that has not authorized the action: alice (net +112 bytes; last increase: +128 bytes, table rows, scope other, row 10)'
             );
         });
         it('bills one table for a table with one secondary index', async () => {
             await expectToThrow(
                 ramtest.actions.storein(['single', 'alice', 30, 8]).send('bob@active'),
-                'unprivileged contract cannot increase RAM usage of another account that has not authorized the action: alice (net +373 bytes; last increase: +128 bytes, table rows, scope single, row 30)'
+                'unprivileged contract cannot increase RAM usage of another account that has not authorized the action: alice (net +377 bytes; last increase: +128 bytes, table rows, scope single, row 30)'
             );
         });
         it('bills two tables for a table with two secondary indexes', async () => {
             await expectToThrow(
                 ramtest.actions.storepair(['double', 'alice', 31, 8]).send('bob@active'),
-                'unprivileged contract cannot increase RAM usage of another account that has not authorized the action: alice (net +617 bytes; last increase: +128 bytes, table pairs.......1, scope double, row 31)'
+                'unprivileged contract cannot increase RAM usage of another account that has not authorized the action: alice (net +625 bytes; last increase: +128 bytes, table pairs.......1, scope double, row 31)'
             );
         });
     });
